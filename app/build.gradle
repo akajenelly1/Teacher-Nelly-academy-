@@ -1,24 +1,52 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.teachernelly.younglearners'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.teachernelly.younglearners'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+
+        release {
+            minifyEnabled false
+            proguardFiles(
+                getDefaultProguardFile('proguard-android-optimize.txt'),
+                'proguard-rules.pro'
+            )
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.activity:activity:1.9.2'
-
     implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
 }
 
-**Then commit the change.**
+Important: Only the code above goes into "app/build.gradle". Nothing after the final "}".
 
-GitHub Actions should automatically start a new build.
+Then:
 
-### What we're looking for
+1. Commit changes
+2. Go to Actions
+3. Open the new build
+4. Let it run
 
-The build should now get past:
-
-`checkDebugDuplicateClasses`
-
-and continue toward:
-
-`assembleDebug`
-
-If it fails again, **send me the new error exactly like you did here.** Don't change anything else yet.
-
-We're actually getting close now — the resource stage passed, manifest processing passed, Java compilation passed, and we're now fixing the dependency stage. 💜
+The previous Kotlin duplicate-class problem should now be addressed, and this time the Gradle file itself will be valid.
