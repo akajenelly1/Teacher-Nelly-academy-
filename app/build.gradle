@@ -39,14 +39,3 @@ dependencies {
     implementation 'androidx.activity:activity:1.9.2'
     implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
 }
-
-Important: Only the code above goes into "app/build.gradle". Nothing after the final "}".
-
-Then:
-
-1. Commit changes
-2. Go to Actions
-3. Open the new build
-4. Let it run
-
-The previous Kotlin duplicate-class problem should now be addressed, and this time the Gradle file itself will be valid.
