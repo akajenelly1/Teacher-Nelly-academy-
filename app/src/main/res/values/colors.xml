@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+
+    <color name="academy_primary">#6A1B9A</color>
+
+    <color name="academy_secondary">#8E24AA</color>
+
+    <color name="academy_background">#FFFFFF</color>
+
+</resources>
