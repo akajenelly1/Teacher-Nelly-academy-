@@ -5,16 +5,14 @@ import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.Settings;
 import android.view.Gravity;
-import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.ValueCallback;
@@ -24,9 +22,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -36,99 +34,164 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private ProgressBar progressBar;
-    private TextView offlineBanner;
     private ValueCallback<Uri[]> filePathCallback;
+    private boolean webMode = false;
 
-    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(0xFFFFFFFF);
-
-        LinearLayout main = new LinearLayout(this);
-        main.setOrientation(LinearLayout.VERTICAL);
-        root.addView(main, new FrameLayout.LayoutParams(-1, -1));
-
-        // Native app header: an app-specific feature outside the website WebView.
-        LinearLayout header = new LinearLayout(this);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(18, 10, 12, 10);
-        header.setBackgroundColor(0xFF5B18D6);
-
-        TextView title = new TextView(this);
-        title.setText("🎓 Teacher Nelly Academy");
-        title.setTextColor(0xFFFFFFFF);
-        title.setTextSize(16);
-        title.setGravity(Gravity.CENTER_VERTICAL);
-        title.setTypeface(null, 1);
-        header.addView(title, new LinearLayout.LayoutParams(0, 56, 1));
-
-        Button share = nativeButton("Share");
-        header.addView(share, new LinearLayout.LayoutParams(-2, 52));
-        share.setOnClickListener(v -> shareAcademy());
-        main.addView(header);
-
-        offlineBanner = new TextView(this);
-        offlineBanner.setText("You're offline. Some academy features may not work.");
-        offlineBanner.setTextColor(0xFF7A4B00);
-        offlineBanner.setBackgroundColor(0xFFFFF0C2);
-        offlineBanner.setPadding(16, 8, 16, 8);
-        offlineBanner.setVisibility(View.GONE);
-        main.addView(offlineBanner);
-
-        progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        progressBar.setMax(100);
-        progressBar.setVisibility(View.GONE);
-        main.addView(progressBar, new LinearLayout.LayoutParams(-1, 4));
-
-        webView = new WebView(this);
-        main.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1));
-
-        // Native bottom action bar: refresh, academy home, downloads and Android settings.
-        LinearLayout actions = new LinearLayout(this);
-        actions.setGravity(Gravity.CENTER);
-        actions.setPadding(4, 5, 4, 5);
-        actions.setBackgroundColor(0xFFF7F4FB);
-
-        Button home = nativeButton("Home");
-        Button refresh = nativeButton("Refresh");
-        Button downloads = nativeButton("Downloads");
-        Button settings = nativeButton("App info");
-        actions.addView(home, new LinearLayout.LayoutParams(0, 50, 1));
-        actions.addView(refresh, new LinearLayout.LayoutParams(0, 50, 1));
-        actions.addView(downloads, new LinearLayout.LayoutParams(0, 50, 1));
-        actions.addView(settings, new LinearLayout.LayoutParams(0, 50, 1));
-        main.addView(actions);
-
-        home.setOnClickListener(v -> webView.loadUrl(ACADEMY_URL));
-        refresh.setOnClickListener(v -> webView.reload());
-        downloads.setOnClickListener(v -> openDownloads());
-        settings.setOnClickListener(v -> openAppInfo());
-
-        setContentView(root);
-        configureWebView();
-        updateConnectivityBanner();
-
-        if (savedInstanceState == null) {
-            webView.loadUrl(ACADEMY_URL);
-        } else {
-            webView.restoreState(savedInstanceState);
-        }
+        showNativeHome();
     }
 
-    private Button nativeButton(String text) {
+    private int dp(float value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private TextView text(String value, float size, int color, boolean bold) {
+        TextView t = new TextView(this);
+        t.setText(value);
+        t.setTextSize(size);
+        t.setTextColor(color);
+        t.setTypeface(Typeface.DEFAULT, bold ? Typeface.BOLD : Typeface.NORMAL);
+        return t;
+    }
+
+    private Button actionButton(String label) {
         Button b = new Button(this);
-        b.setText(text);
-        b.setTextSize(11);
+        b.setText(label);
+        b.setTextSize(14);
         b.setAllCaps(false);
-        b.setPadding(4, 0, 4, 0);
+        b.setTextColor(Color.WHITE);
+        b.setBackgroundColor(Color.rgb(91, 24, 214));
+        b.setPadding(dp(8), dp(8), dp(8), dp(8));
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(56), 1f);
+        p.setMargins(dp(5), dp(5), dp(5), dp(5));
+        b.setLayoutParams(p);
         return b;
     }
 
+    private void showNativeHome() {
+        webMode = false;
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(18), dp(20), dp(18), dp(24));
+        root.setBackgroundColor(Color.rgb(248, 246, 252));
+        scroll.addView(root);
+
+        TextView title = text("Teacher Nelly’s Young Learners Academy", 24, Color.rgb(55, 18, 110), true);
+        title.setGravity(Gravity.CENTER);
+        root.addView(title, new LinearLayout.LayoutParams(-1, -2));
+
+        TextView slogan = text("Learn • Practise • Play • Grow 🌟", 15, Color.DKGRAY, false);
+        slogan.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, -2);
+        sp.setMargins(0, dp(6), 0, dp(20));
+        root.addView(slogan, sp);
+
+        TextView intro = text("Your learning space for lessons, quizzes, registration and premium learning.", 16, Color.DKGRAY, false);
+        intro.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(-1, -2);
+        ip.setMargins(0, 0, 0, dp(18));
+        root.addView(intro, ip);
+
+        LinearLayout row1 = new LinearLayout(this);
+        row1.setOrientation(LinearLayout.HORIZONTAL);
+        Button learn = actionButton("📚  Learn");
+        Button register = actionButton("📝  Register");
+        row1.addView(learn); row1.addView(register); root.addView(row1);
+
+        LinearLayout row2 = new LinearLayout(this);
+        row2.setOrientation(LinearLayout.HORIZONTAL);
+        Button quizzes = actionButton("🧠  Quizzes");
+        Button premium = actionButton("⭐  Premium");
+        row2.addView(quizzes); row2.addView(premium); root.addView(row2);
+
+        LinearLayout row3 = new LinearLayout(this);
+        row3.setOrientation(LinearLayout.HORIZONTAL);
+        Button parent = actionButton("👨‍👩‍👧  Parent Area");
+        Button downloads = actionButton("📥  Downloads");
+        row3.addView(parent); row3.addView(downloads); root.addView(row3);
+
+        LinearLayout row4 = new LinearLayout(this);
+        row4.setOrientation(LinearLayout.HORIZONTAL);
+        Button share = actionButton("📤  Share Academy");
+        Button website = actionButton("🌐  Website");
+        row4.addView(share); row4.addView(website); root.addView(row4);
+
+        TextView about = text("About the app\n\nTeacher Nelly’s Young Learners Academy brings lessons and learning activities together with a dedicated Android experience. Internet access is required for online academy content.", 14, Color.DKGRAY, false);
+        about.setPadding(dp(8), dp(20), dp(8), dp(8));
+        root.addView(about);
+
+        View.OnClickListener openAcademy = v -> openAcademyPage();
+        learn.setOnClickListener(openAcademy);
+        register.setOnClickListener(openAcademy);
+        quizzes.setOnClickListener(openAcademy);
+        premium.setOnClickListener(openAcademy);
+        parent.setOnClickListener(openAcademy);
+        website.setOnClickListener(openAcademy);
+        downloads.setOnClickListener(v -> showDownloadsInfo());
+        share.setOnClickListener(v -> shareAcademy());
+
+        setContentView(scroll);
+    }
+
+    private void openAcademyPage() {
+        showWebView();
+        if (webView.getUrl() == null) webView.loadUrl(ACADEMY_URL);
+        else webView.reload();
+    }
+
+    private void shareAcademy() {
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("text/plain");
+        send.putExtra(Intent.EXTRA_SUBJECT, "Teacher Nelly’s Young Learners Academy");
+        send.putExtra(Intent.EXTRA_TEXT, "Learn • Practise • Play • Grow 🌟\n" + ACADEMY_URL);
+        startActivity(Intent.createChooser(send, "Share Academy"));
+    }
+
+    private void showDownloadsInfo() {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Academy Downloads")
+                .setMessage("Files downloaded from the academy are handled by Android’s Downloads system. If a lesson provides a downloadable file, tap its download link inside the academy.")
+                .setPositiveButton("Open Academy", (d, w) -> openAcademyPage())
+                .setNegativeButton("Close", null)
+                .show();
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
-    private void configureWebView() {
+    private void showWebView() {
+        webMode = true;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+
+        LinearLayout toolbar = new LinearLayout(this);
+        toolbar.setGravity(Gravity.CENTER_VERTICAL);
+        toolbar.setPadding(dp(4), dp(3), dp(4), dp(3));
+        toolbar.setBackgroundColor(Color.rgb(91, 24, 214));
+
+        Button home = new Button(this);
+        home.setText("Home");
+        home.setAllCaps(false);
+        Button refresh = new Button(this);
+        refresh.setText("Refresh");
+        refresh.setAllCaps(false);
+        Button share = new Button(this);
+        share.setText("Share");
+        share.setAllCaps(false);
+        toolbar.addView(home, new LinearLayout.LayoutParams(0, dp(48), 1));
+        toolbar.addView(refresh, new LinearLayout.LayoutParams(0, dp(48), 1));
+        toolbar.addView(share, new LinearLayout.LayoutParams(0, dp(48), 1));
+        container.addView(toolbar);
+
+        progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progressBar.setMax(100);
+        container.addView(progressBar, new LinearLayout.LayoutParams(-1, dp(3)));
+
+        webView = new WebView(this);
+        container.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1));
+        setContentView(container);
+
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -141,9 +204,6 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setLoadsImagesAutomatically(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        s.setJavaScriptCanOpenWindowsAutomatically(false);
-        s.setSupportMultipleWindows(false);
-        s.setUserAgentString(s.getUserAgentString() + " TeacherNellyAcademyAndroid/2.0");
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
@@ -151,14 +211,12 @@ public class MainActivity extends Activity {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                progressBar.setVisibility(newProgress >= 100 ? View.GONE : View.VISIBLE);
                 progressBar.setProgress(newProgress);
-                super.onProgressChanged(view, newProgress);
+                progressBar.setVisibility(newProgress >= 100 ? View.GONE : View.VISIBLE);
             }
 
             @Override
-            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback,
-                                             FileChooserParams params) {
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (filePathCallback != null) filePathCallback.onReceiveValue(null);
                 filePathCallback = callback;
                 try {
@@ -167,7 +225,6 @@ public class MainActivity extends Activity {
                     return true;
                 } catch (Exception e) {
                     filePathCallback = null;
-                    Toast.makeText(MainActivity.this, "File picker is unavailable.", Toast.LENGTH_SHORT).show();
                     return false;
                 }
             }
@@ -178,20 +235,13 @@ public class MainActivity extends Activity {
                 DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
                 request.setMimeType(mimeType);
                 request.addRequestHeader("User-Agent", userAgent);
-                String cookies = CookieManager.getInstance().getCookie(url);
-                if (cookies != null) request.addRequestHeader("Cookie", cookies);
-                request.setTitle("Teacher Nelly Academy download");
-                request.setDescription("Downloading academy resource...");
                 request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,
-                        "TeacherNellyAcademy_" + System.currentTimeMillis());
-                DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                if (dm != null) {
-                    dm.enqueue(request);
-                    Toast.makeText(this, "Download started. Check Downloads.", Toast.LENGTH_SHORT).show();
-                }
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "academy_download_" + System.currentTimeMillis());
+                DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                manager.enqueue(request);
+                Toast.makeText(this, "Download started", Toast.LENGTH_SHORT).show();
             } catch (Exception e) {
-                Toast.makeText(this, "Unable to download this file.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Download could not start", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -200,64 +250,16 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 String scheme = uri.getScheme();
-                if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
-                    return false;
-                }
-                try {
-                    startActivity(new Intent(Intent.ACTION_VIEW, uri));
-                } catch (Exception ignored) { }
+                if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) return false;
+                try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); } catch (Exception ignored) { }
                 return true;
             }
-
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                updateConnectivityBanner();
-                super.onPageFinished(view, url);
-            }
-
-            @Override
-            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                updateConnectivityBanner();
-                Toast.makeText(MainActivity.this, "Could not load this page. Check your internet connection.", Toast.LENGTH_SHORT).show();
-                super.onReceivedError(view, errorCode, description, failingUrl);
-            }
         });
-    }
 
-    private void updateConnectivityBanner() {
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        boolean connected = false;
-        if (cm != null) {
-            NetworkInfo info = cm.getActiveNetworkInfo();
-            connected = info != null && info.isConnected();
-        }
-        offlineBanner.setVisibility(connected ? View.GONE : View.VISIBLE);
-    }
-
-    private void shareAcademy() {
-        Intent send = new Intent(Intent.ACTION_SEND);
-        send.setType("text/plain");
-        send.putExtra(Intent.EXTRA_SUBJECT, "Teacher Nelly's Young Learners Academy");
-        send.putExtra(Intent.EXTRA_TEXT,
-                "Learn • Practise • Play • Grow 🌟\n\nTeacher Nelly's Young Learners Academy:\n" + ACADEMY_URL);
-        startActivity(Intent.createChooser(send, "Share Teacher Nelly Academy"));
-    }
-
-    private void openDownloads() {
-        try {
-            Intent intent = new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS);
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "Open your phone's Downloads folder to see saved resources.", Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private void openAppInfo() {
-        try {
-            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-            intent.setData(Uri.parse("package:" + getPackageName()));
-            startActivity(intent);
-        } catch (Exception ignored) { }
+        home.setOnClickListener(v -> showNativeHome());
+        refresh.setOnClickListener(v -> webView.reload());
+        share.setOnClickListener(v -> shareAcademy());
+        webView.loadUrl(ACADEMY_URL);
     }
 
     @Override
@@ -272,17 +274,19 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        webView.saveState(outState);
-        super.onSaveInstanceState(outState);
-    }
-
-    @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
+        if (webMode && webView != null && webView.canGoBack()) {
             webView.goBack();
+        } else if (webMode) {
+            showNativeHome();
         } else {
             super.onBackPressed();
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        if (webView != null) webView.saveState(outState);
+        super.onSaveInstanceState(outState);
     }
 }
